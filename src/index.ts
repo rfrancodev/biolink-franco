@@ -121,6 +121,12 @@ app.put("/api/profile/save", requireAuth, async (c) => {
   return c.json({ ok: true });
 });
 
-app.notFound((c) => c.env.ASSETS.fetch(c.req.raw));
+app.notFound(async (c) => {
+  const asset = await c.env.ASSETS.fetch(c.req.raw);
+  if (asset.status === 404) {
+    return c.env.ASSETS.fetch(new Request(new URL("/index.html", c.req.url)));
+  }
+  return asset;
+});
 
 export default app;
