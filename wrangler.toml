@@ -1,0 +1,11 @@
+name = "biolink-franco"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+
+[[kv_namespaces]]
+binding = "BIOLINK_DB"
+id = "placeholder-kv-id"
