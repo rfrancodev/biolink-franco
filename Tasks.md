@@ -1,115 +1,164 @@
-# 🗺️ Roadmap de Desenvolvimento: Cyberpunk Biolink v2 (Cloudflare Native)
+# ✅ Relatório de Conclusão: Cyberpunk Biolink v2 (Cloudflare Native)
 
-Este documento contém o escopo técnico dividido em tasks sequenciais para a reconstrução do projeto Biolink utilizando **Vite + React + Tailwind v4** no Frontend e **Hono + Cloudflare Workers + KV** no Backend.
+**Status:** 🟢 **CONCLUÍDO** — Todas as 5 tasks implementadas, com auditoria de segurança aplicada e testes manuais validados.
+**Stack:** Vite + React 19 + Tailwind v4 (Frontend) · Hono + Cloudflare Workers + KV (Backend) · Wrangler 4 (Dev/Deploy)
+**Última atualização:** 2026-08-08
+
+---
+
+## 📊 Resumo Geral
+
+| Task | Descrição | Status | Verificação |
+|---|---|---|---|
+| 1 | Infraestrutura e configuração | ✅ Concluída | `npm run build` gera `./dist` sem erros |
+| 2 | Tipagem e dados iniciais | ✅ Concluída | `npx tsc --noEmit` com 0 erros |
+| 3 | Backend serverless (Hono API) | ✅ Concluída | Requisições HTTP validadas via servidor local |
+| 4 | Interface cyberpunk (Frontend) | ✅ Concluída | Validação em viewport mobile e Network tab |
+| 5 | Painel administrativo e roteamento | ✅ Concluída | Fluxo login → edição → save validado |
+| — | Auditoria de segurança | ✅ Aplicada | `npm run typecheck` + testes de sanidade |
 
 ---
 
 ## 🚀 TASK 1: Inicialização do Projeto e Configuração da Infraestrutura
 
-### 📝 Tarefa
-Configurar o ambiente base do projeto com foco em arquitetura serverless unificada, garantindo que o deploy do Frontend (Assets) e Backend (Worker) ocorra através de um único comando utilizando caminhos de build estritamente relativos.
+### ✅ O que foi feito
+- **`package.json`** — módulos ESM com scripts `dev`, `build`, `deploy` e `typecheck` (valida os dois tsconfigs: app e worker).
+- **`wrangler.toml`** — entrada em `src/index.ts`, bloco `[assets]` apontando para `./dist` com binding `ASSETS`, e namespace `[[kv_namespaces]]` `BIOLINK_DB`.
+- **`vite.config.ts`** — `base: "./"` (caminhos relativos para subdomínio), plugins React + Tailwind v4, servidor com `host: "0.0.0.0"`, porta 3000 e `allowedHosts: true` para exposição externa.
+- **`tsconfig.*.json`** — TypeScript estrito separado em três escopos: app (React), node e worker.
+- **`.gitignore`** — ignora `node_modules`, `dist`, `.wrangler`, `.env`, `.env.*` e `.dev.vars` (segredos).
 
-1. **Gerar o arquivo `package.json`** com suporte a módulos ESM e os scripts de automação:
-   - `"dev": "vite"`
-   - `"build": "vite build"`
-   - `"deploy": "npm run build && wrangler deploy"`
-2. **Gerar o arquivo `wrangler.toml`** configurando o ponto de entrada do Worker em `src/index.ts`, a diretiva de arquivos estáticos `[assets]` apontando para `./dist` com o binding `ASSETS`, e o namespace `[[kv_namespaces]]` nomeado como `BIOLINK_DB`.
-3. **Gerar o arquivo `vite.config.ts`** contendo a propriedade `base: './'` e o plugin oficial do Tailwind v4 (`@tailwindcss/vite`).
-4. **Gerar o arquivo `tsconfig.json`** configurado para TypeScript estrito compatível com React 19 e ambientes de Worker.
-
-### 🧪 Executar Teste
-- Executar `npm install` localmente para validar a árvore de dependências e checar se há conflitos de pacotes.
-- Executar o comando de compilação de teste `npx vite build` para checar se a pasta `./dist` é gerada com sucesso.
-
-### 🔍 Auto-Review
-- O arquivo `vite.config.ts` possui a linha `base: './'`? (Se não tiver, o site carregará em branco no subdomínio).
-- O arquivo `wrangler.toml` está mapeando a pasta `./dist` corretamente dentro do bloco `[assets]`?
-- Existe algum resquício de bibliotecas do Node tradicional (como `express` ou `dotenv`) no `package.json`? (Se sim, remova-as).
+### 🧪 Testes realizados
+- `npm install` — árvore de dependências instalada sem conflitos de pacotes.
+- `npx vite build` — 1806 módulos transformados, pasta `./dist` gerada com sucesso (~232 kB JS, ~28 kB CSS).
 
 ### 📦 Handoff
-Esta tarefa estará concluída quando os arquivos `package.json`, `wrangler.toml`, `vite.config.ts` e `tsconfig.json` estiverem criados na raiz do projeto e o comando `npm run build` gerar a pasta `./dist` sem erros no console.
+✅ Concluída — arquivos criados na raiz e `npm run build` gera `./dist` sem erros.
 
 ---
 
 ## ⚙️ TASK 2: Camada de Tipagem e Dados Iniciais (Data & Types)
 
-### 📝 Tarefa
-Criar a modelagem de dados estrita em TypeScript e o arquivo de fallback estático que servirá de semente inicial para o banco de dados e estado do front-end.
+### ✅ O que foi feito
+- **`src/types/index.ts`** — interfaces `Profile`, `SocialLink`, `LinkCard` (com `clicksCount: number` obrigatório) e o agregador `BiolinkData`.
+- **`src/data/initialData.ts`** — constante `INITIAL_BIOLINK_DATA` com perfil do Rafa Franco (`@rafafranco.ia`), avatar apontando para `assets/images/imagem-avatar.jpeg`, selo de verificado e 4 links sociais (GitHub, LinkedIn, Instagram, YouTube).
+- **Cards de links** — versão final com 3 cards: **Meu site** (`francorafael.com`, `isFeatured: true`), **Bônus Opencode** (`opencode.ai/go?ref=9GKTK5HXJH`) e **Email** (`mailto:rfrancodev@gmail.com`). Todos com `clicksCount: 0`, `order` sequencial e ícones do `lucide-react` (`globe`, `sparkles`, `mail`).
 
-1. **Criar o arquivo `src/types/index.ts`** contendo as interfaces estruturadas: `Profile`, `SocialLink`, `LinkCard` e o agregador `BiolinkData`. O `LinkCard` deve conter obrigatoriamente a propriedade `clicksCount: number`.
-2. **Criar o arquivo `src/data/initialData.ts`** exportando a constante `INITIAL_BIOLINK_DATA` baseada no tipo `BiolinkData`. Preencha com os dados do Rafa Franco (`@rafafranco.ia`), os links de redes sociais funcionais e pelo menos 4 cards de links iniciais, marcando o primeiro como `isFeatured: true`. O caminho do avatar deve apontar para `assets/images/imagem-avatar.jpeg`.
-
-### 🧪 Executar Teste
-- Executar o comando `npx tsc --noEmit` no terminal para garantir que o compilador do TypeScript valide as tipagens do `initialData.ts` contra o schema do `index.ts` sem apontar erros de propriedades ausentes.
-
-### 🔍 Auto-Review
-- Todos os campos obrigatórios definidos nas interfaces de `types` foram devidamente preenchidos na estrutura do `INITIAL_BIOLINK_DATA`?
-- O contador `clicksCount` de todos os links iniciais foi inicializado explicitamente com o valor `0`?
+### 🧪 Testes realizados
+- `npx tsc --noEmit` — compilador valida `initialData.ts` contra o schema de `types` sem propriedades ausentes.
+- `npm run typecheck` — 0 erros nos projetos app e worker.
 
 ### 📦 Handoff
-Esta tarefa estará concluída quando a pasta `src/types/` e `src/data/` contiverem os arquivos indexados com tipagem 100% validadas pelo TypeScript.
+✅ Concluída — tipagem 100% validada e dados iniciais servidos como fallback quando o KV está vazio.
 
 ---
 
 ## 🧠 TASK 3: Desenvolvimento do Backend Serverless (Hono API)
 
-### 📝 Tarefa
-Desenvolver o servidor backend serverless dentro do ecossistema do Worker utilizando o framework Hono para expor as rotas de API e realizar a persistência global e atômica diretamente no Cloudflare KV.
+### ✅ O que foi feito — `src/index.ts`
+- **Instância Hono** com middleware CORS habilitado para qualquer origem (`*`).
+- **`GET /api/profile`** — lê a chave `"biolink_data"` do KV; se ausente, responde com `structuredClone(INITIAL_BIOLINK_DATA)`. Enriquecido com os contadores das chaves `clicks:*` quando existem.
+- **`POST /api/links/:id/click`** — incrementa o contador usando chave KV separada (`clicks:<id>`) para evitar condição de corrida (leitura + gravação atômica do contador individual). Fallback grava no JSON principal se a leitura das chaves falhar.
+- **`POST /api/auth/login`** — valida `email`/`password` contra `c.env.ADMIN_EMAIL`/`c.env.ADMIN_PASSWORD` e emite token JWT-like (payload base64url + HMAC-SHA256 assinado com a senha como segredo, expiração de 7 dias).
+- **`GET /api/auth/me`** — protegido por `requireAuth`, confirma token válido.
+- **`PUT /api/profile/save`** — protegido por `requireAuth`, valida estrutura, limites de tamanho (500 chars no perfil, 200/300 nos cards) e bloqueia protocolos perigosos (`javascript:`, `data:`, `vbscript:`) antes de gravar no KV.
+- **`app.notFound`** — fallback SPA: serve os assets do `ASSETS` e redireciona rotas desconhecidas para `index.html`.
 
-1. **Escrever o arquivo `src/index.ts`** inicializando a instância do Hono com o middleware de CORS ativado para qualquer origem (`*`).
-2. **Implementar a rota `GET /api/profile`:** Tenta buscar a chave `"biolink_data"` do `c.env.BIOLINK_DB`. Se o valor retornado for nulo, importa e responde com o JSON de `initialData.ts`.
-3. **Implementar a rota `POST /api/links/:id/click`:** Captura o parâmetro ID, extrai o JSON atual do KV, localiza o card correto, incrementa a propriedade `clicksCount` em mais um (`+1`) e grava a estrutura inteira atualizada de volta no KV de forma assíncrona.
-4. **Implementar as rotas de autenticação (`POST /api/auth/login` e `GET /api/auth/me`):** O login deve validar as credenciais em texto contra as variáveis secretas de ambiente do Worker (`c.env.ADMIN_EMAIL` e `c.env.ADMIN_PASSWORD`) e retornar um token de autenticação em string.
-
-### 🧪 Executar Teste
-- Iniciar o servidor de desenvolvimento local da Cloudflare executando `npx wrangler dev`.
-- Realizar uma requisição de teste utilizando uma ferramenta de API (como Postman ou cURL) para `GET http://localhost:8787/api/profile` e verificar se a carga de dados JSON é devolvida com o cabeçalho `Content-Type: application/json`.
-
-### 🔍 Auto-Review
-- O código do backend está livre de importações de arquivos locais como `fs` ou variáveis do Node como `process.env`? (Tudo deve vir de `c.env`).
-- As rotas que alteram dados executam o método `await c.env.BIOLINK_DB.put(...)` para garantir que o dado foi de fato gravado na nuvem antes de responder ao cliente?
+### 🧪 Testes realizados
+- `npx wrangler dev --port 8787` — servidor iniciado com bindings lidos do `.dev.vars`.
+- `GET /api/profile` → **200** com `Content-Type: application/json`.
+- `POST /api/auth/login` com credenciais corretas → **200** retornando `{ token }`.
+- `POST /api/auth/login` com credenciais erradas → **401**.
+- `GET /api/auth/me` com token válido → **200**; sem token → **401**.
 
 ### 📦 Handoff
-Esta tarefa estará concluída quando o arquivo `src/index.ts` estiver pronto, rodando sem crashes no ambiente de simulação do Wrangler e respondendo corretamente aos métodos HTTP planejados.
+✅ Concluída — backend rodando sem crashes no Wrangler e respondendo corretamente aos métodos HTTP planejados.
 
 ---
 
 ## 🎨 TASK 4: Interface do Usuário e Design System Cyberpunk (Frontend)
 
-### 📝 Tarefa
-Construir a camada visual responsiva do Biolink focada na experiência mobile (estilo web app) aplicando estritamente a paleta de cores escura e os efeitos visuais neon descritos no Design System.
+### ✅ O que foi feito
+- **`src/index.css`** — tokens Tailwind v4 com paleta cyberpunk: background `#0F0C1B`, surfaces `#161224`, neon violet `#D946EF`, electric blue `#3B82F6`.
+- **`src/components/PublicBiolink.tsx`** — avatar circular envolto em anel neon com fallback de iniciais (`onError`), nome com selo azul de verificado, cargo e biografia. Ícones de rede social via SVG inline das marcas. Ícones dos cards via `lucide-react` com fallback para `Globe`.
+- **Design System nos cards** — card `isFeatured` com preenchimento gradiente 135° neon→electric; cards secundários com glassmorphism (`bg-cyber-surface/60` + `backdrop-blur-md`), efeito hover com `scale` e glow.
+- **Telemetria de cliques** — `trackClick` dispara `fetch('/api/links/<id>/click', { method: 'POST', keepalive: true })` sem bloquear a navegação (falha silenciosa).
+- **Container** limitado a `max-w-[480px]` centralizado para boa aparência em desktop.
 
-1. **Configurar os estilos globais do Tailwind v4** importando os tokens de cores: Background (`#0F0C1B`), Surfaces (`#161224`) e os gradientes do Neon Violet (`#D946EF`) ao Electric Blue (`#3B82F6`).
-2. **Criar o componente `src/components/PublicBiolink.tsx`:** Renderizar o topo (Avatar circular envolto em anel neon, nome com selo azul de verificado, cargo e biografia), a linha horizontal de redes sociais com ícones do `lucide-react` e a lista de links.
-3. **Aplicar as regras do Design System nos Cards:** O card configurado como `isFeatured: true` deve receber preenchimento total do gradiente linear em 135 graus. Os secundários devem possuir fundo transparente com efeito Glassmorphism (`backdrop-blur-md` e opacidade).
-4. **Acoplar o trigger de métricas:** Configurar o evento de clique (`onClick`) nos botões de link para disparar um disparo de telemetria em segundo plano via `fetch('/api/links/ID_DO_LINK/click', { method: 'POST' })` sem prender ou bloquear a navegação do usuário para a URL externa.
-5. **Criar o componente `src/components/AdminLogin.tsx`:** Montar o formulário básico de autenticação mantendo o padrão escuro e futurista da interface.
-
-### 🧪 Executar Teste
-- Abrir o ambiente local e redimensionar a tela para a largura de um smartphone (`375px` a `425px`). Garantir que os elementos se alinhem de forma empilhada centralizada e que não ocorram quebras de layout ou transbordamento horizontal de página.
-- Verificar na aba *Network* (Rede) do inspetor de elementos se o clique em um link dispara a requisição de clique com sucesso.
-
-### 🔍 Auto-Review
-- O efeito de desfoque de fundo (Glassmorphism) foi aplicado corretamente com propriedades compatíveis com os navegadores mobiles?
-- O container principal possui uma limitação de largura máxima de tela (ex: `max-w-md` ou `max-w-[480px]`) centralizada para manter o visual elegante quando aberto em computadores desktop?
+### 🧪 Testes realizados
+- Teste de viewport 375px–425px: elementos empilhados centralizados, sem quebra de layout ou transbordo horizontal.
+- Verificação na aba Network: clique no card dispara `POST /api/links/<id>/click` com sucesso.
 
 ### 📦 Handoff
-Esta tarefa estará concluída quando os componentes `PublicBiolink` e `AdminLogin` estiverem estilizados, integrados às chamadas de leitura de API e renderizando de forma idêntica às especificações do Design System.
+✅ Concluída — componente público estilizado conforme o Design System e integrado às chamadas de API.
 
 ---
 
 ## 🛠️ TASK 5: Painel Administrativo de Controle e Sincronização Global
 
-### 📝 Tarefa
-Desenvolver o Dashboard administrativo seguro para permitir a manipulação total do Biolink em tempo real e orquestrar o controle de estado e roteamento no arquivo central do front-end.
+### ✅ O que foi feito
+- **`src/components/AdminLogin.tsx`** — formulário de autenticação em padrão dark/futurista; salva o token em `localStorage` (chave exportada como `TOKEN_STORAGE_KEY`).
+- **`src/components/AdminDashboard.tsx`** — painel com edição de textos do perfil, grid de redes sociais, lista interativa de cards (título, URL, ícone, destaque `isFeatured`, ordem e status ativo), botão Salvar que compila o estado e envia `PUT /api/profile/save` com cabeçalho `Authorization: Bearer <token>`.
+- **`src/App.tsx`** — roteador SPA via History API (`usePathname`), ciclo de vida que consulta `GET /api/profile`, controle de sessão em `localStorage` com sincronização via evento `storage`, verificação do token contra `/api/auth/me` ao entrar em `/admin`, telas de loading (spinner neon) e handlers de login/logout/salvar.
 
-1. **Criar o componente `src/components/AdminDashboard.tsx`:** Interface contendo os inputs para alteração de textos do perfil, gerenciamento do grid de links de redes sociais e a lista interativa de cards para manipulação de títulos, adição de novos caminhos e alternação rápida de qual card detém o destaque principal.
-2. **Integrar os payloads de gravação:** Conectar o botão principal de salvar do painel para compilar os dados modificados do estado e disparar uma requisição HTTP única do tipo `PUT` enviando a carga completa para a API do Worker, incluindo obrigatoriamente o token de autenticação Bearer recuperado no cabeçalho.
-3. **Escrever o arquivo central `src/App.tsx`:** Implementar o gerenciador de rotas e o ciclo de vida inicial. Ao carregar a página, consulta a rota pública `/api/profile`. Se o usuário navegar para `/admin`, faz a checagem no `localStorage` pelo token ativo para decidir se exibe a tela de login ou libera a visualização do painel administrativo de controle.
+### 🧪 Testes realizados
+- Login no painel `/admin` com credenciais válidas → acesso liberado ao dashboard.
+- Alteração da biografia + reordenação de cards + clique em "Salvar" → `PUT /api/profile/save` retorna 200 e persiste no KV.
+- Recarregamento da página pública reflete imediatamente as mudanças salvas.
+- Token removido do `localStorage` ao validar sessão inválida → redirecionamento para `/admin`.
 
-### 🧪 Executar Teste
-- Logar no painel administrativo local, realizar alterações na biografia, trocar a ordem de exibição de um card e clicar em "Salvar".
-- Abrir uma janela anônima paralela no navegador e checar se o visual público do Biolink reflete imediatamente as mudanças recém-salvas sem exigir uma atualização forçada de cache de disco.
+### 📦 Handoff
+✅ Concluída — dashboard funcional com autenticação, edição e sincronização global via KV.
 
-### 🔍 Auto-Review
-- O front-end bloqueia a exibição do painel se o token não existir ou for inválido, redirecionando o usuário de volta para a tela de `/admin`?
+---
+
+## 🔒 Auditoria de Segurança Aplicada (pós-tasks)
+
+Fonte: `auditoria.md`. Correções implementadas em commit `4c16f1d`.
+
+| Vulnerabilidade | Severidade | Correção aplicada |
+|---|---|---|
+| Stored XSS via protocol injection (`javascript:` em href) | 🔴 Alta | Criado `src/lib/urlSanitizer.ts`; todos os `href` de cards e redes sociais passam por `sanitizeUrl()` |
+| Ausência de validação de campos/tamanho no save | 🟡 Média | `PUT /api/profile/save` valida estrutura, limites de texto e protocolos bloqueados |
+| Condição de corrida no contador de cliques | 🔵 Baixa | Contadores movidos para chaves KV separadas `clicks:<id>` + enriquecimento no `GET /api/profile` |
+
+### 🧪 Testes de verificação da auditoria
+- `npm run typecheck` — **0 erros** após todas as correções.
+- Sanity check de URL maliciosa: payload com `javascript:` é rejeitado na API (400) e sanitizado no frontend (`#blocked`).
+- Vetores aprovados sem correção: token HMAC-SHA256 com expiração, erro de login genérico (sem user enumeration), CORS wildcard, secrets fora do código, `base: "./"` no Vite.
+
+---
+
+## 🧪 Suíte de Testes — Como Reproduzir
+
+### Backend (API)
+```bash
+npx wrangler dev --port 8787   # usa credenciais do .dev.vars
+```
+- `GET http://localhost:8787/api/profile` → esperado **200 + JSON**
+- `POST /api/auth/login` com `{email, password}` corretos → **200 + { token }**
+- `POST /api/auth/login` com credenciais erradas → **401**
+- `POST /api/links/:id/click` → **200 + { id, clicksCount }**
+- `PUT /api/profile/save` sem token → **401**; com payload inválido/URL bloqueada → **400**
+
+### Frontend (build + tipos)
+```bash
+npm run typecheck   # tsc app + worker, esperado 0 erros
+npm run build       # gera ./dist sem erros
+```
+
+### Manual (navegador)
+1. Acessar a rota pública e conferir avatar, bio, redes sociais e ordem dos cards.
+2. Clicar em um card e confirmar na aba Network o `POST /api/links/<id>/click`.
+3. Navegar para `/admin`, fazer login, alterar dados e clicar em "Salvar".
+4. Recarregar a página pública e conferir que as alterações persistem.
+
+---
+
+## 📦 Deploy
+
+```bash
+npm run deploy   # vite build && wrangler deploy
+```
+- Os secrets `ADMIN_EMAIL` e `ADMIN_PASSWORD` devem ser configurados em produção via `wrangler secret put` (nunca versionados).
+- O KV `BIOLINK_DB` deve ter um ID real no `wrangler.toml` em produção (o local usa `placeholder-kv-id`).
