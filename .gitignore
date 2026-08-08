@@ -7,3 +7,4 @@ dev-dist
 .env.*
 !.env.example
 graphify-out
+auditoria.md

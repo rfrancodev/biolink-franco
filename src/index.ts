@@ -80,21 +80,48 @@ async function requireAuth(c: Context<{ Bindings: Env }>, next: () => Promise<vo
 
 app.get("/api/profile", async (c) => {
   const stored = await c.env.BIOLINK_DB.get<BiolinkData>(KV_KEY, "json");
-  const data = stored ?? INITIAL_BIOLINK_DATA;
+  const data: BiolinkData = stored ?? structuredClone(INITIAL_BIOLINK_DATA);
+  try {
+    const listed = await c.env.BIOLINK_DB.list({ prefix: "clicks:" });
+    if (listed.keys.length > 0) {
+      const counts = await Promise.all(
+        listed.keys.map(async (k) => ({
+          id: k.name.slice("clicks:".length),
+          count: parseInt((await c.env.BIOLINK_DB.get(k.name)) ?? "0", 10) || 0,
+        }))
+      );
+      const countMap = new Map(counts.map((entry) => [entry.id, entry.count]));
+      data.linkCards = data.linkCards.map((card) => ({
+        ...card,
+        clicksCount: countMap.get(card.id) ?? card.clicksCount,
+      }));
+    }
+  } catch {
+    // Mantém os valores originais em caso de falha na leitura.
+  }
   return c.json(data);
 });
 
 app.post("/api/links/:id/click", async (c) => {
   const id = c.req.param("id");
-  const stored = await c.env.BIOLINK_DB.get<BiolinkData>(KV_KEY, "json");
-  const data: BiolinkData = stored ?? structuredClone(INITIAL_BIOLINK_DATA);
-  const card = data.linkCards.find((link) => link.id === id);
-  if (!card) {
-    return c.json({ error: "Card de link não encontrado" }, 404);
+  const clickKey = `clicks:${id}`;
+  let count: number;
+  try {
+    const current = await c.env.BIOLINK_DB.get(clickKey);
+    count = (current ? parseInt(current, 10) : 0) + 1;
+    await c.env.BIOLINK_DB.put(clickKey, String(count));
+  } catch {
+    const stored = await c.env.BIOLINK_DB.get<BiolinkData>(KV_KEY, "json");
+    const data: BiolinkData = stored ?? structuredClone(INITIAL_BIOLINK_DATA);
+    const card = data.linkCards.find((link) => link.id === id);
+    if (!card) {
+      return c.json({ error: "Card de link não encontrado" }, 404);
+    }
+    card.clicksCount += 1;
+    await c.env.BIOLINK_DB.put(KV_KEY, JSON.stringify(data));
+    count = card.clicksCount;
   }
-  card.clicksCount += 1;
-  await c.env.BIOLINK_DB.put(KV_KEY, JSON.stringify(data));
-  return c.json({ id: card.id, clicksCount: card.clicksCount });
+  return c.json({ id, clicksCount: count });
 });
 
 app.post("/api/auth/login", async (c) => {
@@ -112,11 +139,39 @@ app.get("/api/auth/me", requireAuth, (c) => {
   return c.json({ authenticated: true });
 });
 
+const MAX_STRING_LEN = 500;
+const BLOCKED_URL_RE = /^(javascript|data|vbscript):/i;
+
 app.put("/api/profile/save", requireAuth, async (c) => {
   const body = await c.req.json<BiolinkData>();
   if (!body || !body.profile || !Array.isArray(body.socialLinks) || !Array.isArray(body.linkCards)) {
     return c.json({ error: "Payload inválido" }, 400);
   }
+
+  if (
+    (body.profile.name?.length ?? 0) > MAX_STRING_LEN ||
+    (body.profile.role?.length ?? 0) > MAX_STRING_LEN ||
+    (body.profile.bio?.length ?? 0) > MAX_STRING_LEN ||
+    (body.profile.footerText?.length ?? 0) > MAX_STRING_LEN
+  ) {
+    return c.json({ error: "Campos de texto excedem o limite de 500 caracteres" }, 400);
+  }
+
+  for (const card of body.linkCards) {
+    if ((card.title?.length ?? 0) > 200 || (card.subtitle?.length ?? 0) > 300) {
+      return c.json({ error: `Texto do card "${card.title}" excede o limite` }, 400);
+    }
+    if (card.url && BLOCKED_URL_RE.test(card.url.trim())) {
+      return c.json({ error: `URL bloqueada no card "${card.title}"` }, 400);
+    }
+  }
+
+  for (const link of body.socialLinks) {
+    if (link.url && BLOCKED_URL_RE.test(link.url.trim())) {
+      return c.json({ error: `URL bloqueada em rede social "${link.label}"` }, 400);
+    }
+  }
+
   await c.env.BIOLINK_DB.put(KV_KEY, JSON.stringify(body));
   return c.json({ ok: true });
 });

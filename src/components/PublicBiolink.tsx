@@ -9,6 +9,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { BiolinkData, LinkCard, SocialLink } from "../types";
+import { sanitizeUrl } from "../lib/urlSanitizer";
 
 interface PublicBiolinkProps {
   data: BiolinkData;
@@ -110,7 +111,7 @@ export default function PublicBiolink({ data }: PublicBiolinkProps) {
   const renderSocial = (social: SocialLink) => (
     <a
       key={social.id}
-      href={social.url}
+      href={sanitizeUrl(social.url)}
       target="_blank"
       rel="noopener noreferrer"
       aria-label={social.label}
@@ -127,7 +128,7 @@ export default function PublicBiolink({ data }: PublicBiolinkProps) {
       return (
         <a
           key={link.id}
-          href={link.url}
+          href={sanitizeUrl(link.url)}
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => trackClick(link)}
@@ -150,7 +151,7 @@ export default function PublicBiolink({ data }: PublicBiolinkProps) {
     return (
       <a
         key={link.id}
-        href={link.url}
+        href={sanitizeUrl(link.url)}
         target="_blank"
         rel="noopener noreferrer"
         onClick={() => trackClick(link)}
