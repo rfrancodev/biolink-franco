@@ -2,6 +2,8 @@
 
 > Um **link na bio** com personalidade própria: visual cyberpunk, carregamento instantâneo e um painel admin para você editar tudo em tempo real — sem tocar em código.
 
+🌍 **No ar em:** [**bio.francorafael.com**](https://bio.francorafael.com)
+
 ---
 
 <p align="center">
@@ -89,7 +91,7 @@ wrangler secret put ADMIN_EMAIL
 wrangler secret put ADMIN_PASSWORD
 ```
 
-> 🔑 Dica: troque o `placeholder-kv-id` do `wrangler.toml` pelo ID real do seu namespace KV para persistir os dados em produção.
+> ✅ Deploy pronto: o KV já está vinculado em `wrangler.toml` e a aplicação roda em [bio.francorafael.com](https://bio.francorafael.com).
 
 ---
 
@@ -182,6 +184,7 @@ Fluxo manual recomendado:
 - ✅ Fase 3 — API serverless + segurança
 - ✅ Fase 4 — Interface cyberpunk
 - ✅ Fase 5 — Painel administrativo
+- ✅ Deploy — Cloudflare Workers + domínio customizado (`bio.francorafael.com`)
 - 🔒 + Auditoria de segurança aplicada (XSS, payloads, condição de corrida)
 
 Veja o [`Tasks.md`](./Tasks.md) para o relatório detalhado de cada fase e os testes realizados.
